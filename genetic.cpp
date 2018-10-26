@@ -13,8 +13,8 @@ public:
 			Select();
 			Crossover();
 			Mutate();
-			Eval()
-		} while ShouldContinue();
+			Eval();
+		} while(ShouldContinue());
 
 	}
 private:
