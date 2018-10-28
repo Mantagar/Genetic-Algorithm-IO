@@ -8,23 +8,15 @@ using namespace std;
 class Genetic {
 
   int dim, size;
-//list usage may be questionable (vectors?) 
-  list<double*> population;
+  double** population;
+  double* scores;
   double (*initFunc)(int);
+  double (*fitFunc)(double*, int);
 
   void init() {
-//this may lead to memory leaks if not handled properly in select function
-    while(!population.empty()) {
-      double* sample = population.front();
-      population.pop_front();
-      delete sample;
-    }
-    for(int s=0; s<size; s++) {
-      double* sample = new double[dim];
+    for(int s=0; s<size; s++)
       for(int d=0; d<dim; d++)
-        sample[d] = initFunc(d);
-      population.push_front(sample);
-    }
+        population[s][d] = initFunc(d);
   }
 
   void eval() {
@@ -32,7 +24,7 @@ class Genetic {
   }
 
   bool shouldContinue() {
-	  return false;
+    return false;
   }
 
   void select() {
@@ -49,11 +41,23 @@ class Genetic {
 
 public:
 
-  Genetic(int dim, int size, double (*initFunc)(int)) {
+  Genetic(int dim, int size, double (*initFunc)(int), double (*fitFunc)(double*, int)) {
     srand(time(NULL));
     this->dim = dim;
     this->size = size;
+    population = new double*[size];
+    for(int i=0; i<size; i++)
+      population[i] = new double[dim];
+    scores = new double[size];
     this->initFunc = initFunc;
+    this->fitFunc = fitFunc;
+  }
+
+  ~Genetic() {
+    delete[] scores;
+    for(int i=0; i<dim; i++)
+      delete[] population[i];
+    delete[] population;
   }
 
   void run() {
@@ -68,10 +72,10 @@ public:
   }
 
   void print() {
-    for(double* const& sample : population) {
-      cout << setprecision(5) << fixed << sample[0];
-      for(int i=1; i<dim; i++)
-        cout << ",\t" << sample[i];
+    for(int s=0; s<size; s++) {
+      cout << setprecision(5) << fixed << population[s][0];
+      for(int d=1; d<dim; d++)
+        cout << ",\t" << population[s][d];
       cout << endl;
     }
   }
@@ -82,8 +86,16 @@ double sampleInitFunc(int dim_id) {
   return (double)rand() / RAND_MAX * 10 - 5;
 }
 
+double sampleFitFunc(double* sample, int dim) {
+  double fitness = 0;
+  for(int i=0; i<dim; i++) {
+    fitness += sample[i];
+  }
+  return fitness/dim;
+}
+
 int main() {
-  Genetic instance(3, 100, sampleInitFunc);
+  Genetic instance(3, 100, sampleInitFunc, sampleFitFunc);
   instance.run();
   instance.print();
 
