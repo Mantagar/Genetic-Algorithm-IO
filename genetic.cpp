@@ -8,10 +8,13 @@ using namespace std;
 class Genetic {
 
   int dim, size;
+  double mutationProb;
   double** population;
   double* scores;
   double (*initFunc)(int);
   double (*fitFunc)(double*, int);
+  int idx1;
+  int idx2;
 
   void init() {
     for(int s=0; s<size; s++)
@@ -20,31 +23,45 @@ class Genetic {
   }
 
   void eval() {
-
+    for(int s=0; s<size; s++)
+        scores[s] = fitFunc(population[s], dim);
   }
 
   bool shouldContinue() {
-    return false;
+    return true; //TODO define stop condition
   }
 
   void select() {
-
+    //for now only 2 fittest samples can crossover
+    idx1 = 0;
+    for(int i=0; i<size; i++)
+      if(scores[idx]>s=cores[i]) idx1 = i;
+    idx2 = (idx1==0) ? 1 : 0;
+    for(int i=0; i<size; i++)
+      if(scores[idx]>=scores[i] and i!=idx2) idx2 = i;
   }
 
   void crossover() {
-
+    for(int s=0; s<size; s++)
+      for(int d=0; d<dim; d++)
+        if(s!=idx1 and s!=idx2)
+          population[s][d] = (rand()%2) ? population[idx1][d] : population[idx2][d]; //Random gene inheritance
   }
 
   void mutate() {
-
+    for(int s=0; s<size; s++)
+      for(int d=0; d<dim; d++)
+        if(s!=idx1 and s!=idx2)
+          if(rand()/(double)MAX_RAND<mutationProb) population[s][d] = initFunc(d); //Random mutation of genes with given probability
   }
 
 public:
 
-  Genetic(int dim, int size, double (*initFunc)(int), double (*fitFunc)(double*, int)) {
+  Genetic(int dim, int size, double mutationProb, double (*initFunc)(int), double (*fitFunc)(double*, int)) {
     srand(time(NULL));
     this->dim = dim;
     this->size = size;
+    this->mutationProb = mutationProb;
     population = new double*[size];
     for(int i=0; i<size; i++)
       population[i] = new double[dim];
@@ -64,6 +81,7 @@ public:
     init();
     eval();
     do {
+      printMeanScore();
       select();
       crossover();
       mutate();
@@ -71,6 +89,15 @@ public:
     } while(shouldContinue());
   }
 
+  void printMeanScore() {
+    double meanScore = 0;
+    for(int s=0; s<size; s++) {
+      meanScore += scores[s];
+    }
+    meanScore /= size;
+    cout << "Mean score: " << meanScore << endl;
+  }
+    
   void print() {
     for(int s=0; s<size; s++) {
       cout << setprecision(5) << fixed << population[s][0];
@@ -95,7 +122,7 @@ double sampleFitFunc(double* sample, int dim) {
 }
 
 int main() {
-  Genetic instance(3, 100, sampleInitFunc, sampleFitFunc);
+  Genetic instance(3, 100, 0.01, sampleInitFunc, sampleFitFunc);
   instance.run();
   instance.print();
 
