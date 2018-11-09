@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <iomanip>
+#include <math.h>
+
+#define PI 3.1415926535
 using namespace std;
 /* Let's use Java's naming convention */
 class Genetic {
@@ -35,10 +38,11 @@ class Genetic {
     //for now only 2 fittest samples can crossover
     idx1 = 0;
     for(int i=0; i<size; i++)
-      if(scores[idx]>s=cores[i]) idx1 = i;
+      if(scores[idx1]>=scores[i]) idx1 = i;
     idx2 = (idx1==0) ? 1 : 0;
     for(int i=0; i<size; i++)
-      if(scores[idx]>=scores[i] and i!=idx2) idx2 = i;
+      if(scores[idx2]>=scores[i] and i!=idx1) idx2 = i;
+    cout << idx1<<" "<<idx2 << endl;
   }
 
   void crossover() {
@@ -52,7 +56,7 @@ class Genetic {
     for(int s=0; s<size; s++)
       for(int d=0; d<dim; d++)
         if(s!=idx1 and s!=idx2)
-          if(rand()/(double)MAX_RAND<mutationProb) population[s][d] = initFunc(d); //Random mutation of genes with given probability
+          if(rand()/(double)RAND_MAX<mutationProb) population[s][d] = initFunc(d); //Random mutation of genes with given probability
   }
 
 public:
@@ -81,21 +85,16 @@ public:
     init();
     eval();
     do {
-      printMeanScore();
       select();
       crossover();
       mutate();
       eval();
+      printFittestScore();
     } while(shouldContinue());
   }
 
-  void printMeanScore() {
-    double meanScore = 0;
-    for(int s=0; s<size; s++) {
-      meanScore += scores[s];
-    }
-    meanScore /= size;
-    cout << "Mean score: " << meanScore << endl;
+  void printFittestScore() {
+    cout << "Best score: " << scores[idx1] << endl;
   }
     
   void print() {
@@ -109,20 +108,27 @@ public:
 
 };
 
-double sampleInitFunc(int dim_id) {
-  return (double)rand() / RAND_MAX * 10 - 5;
+double rastriginInit(int dim_id) {
+  return (double)rand() / RAND_MAX * 10.24 - 5.12;
 }
 
-double sampleFitFunc(double* sample, int dim) {
-  double fitness = 0;
-  for(int i=0; i<dim; i++) {
-    fitness += sample[i];
+double rastrigin(double *point, int DIMENSION){
+  double result = DIMENSION*10;
+  for(int i=0; i<DIMENSION; i++){
+    result += point[i]*point[i]-10*cos(2*PI*point[i]);
   }
-  return fitness/dim;
+  return result;
 }
 
-int main() {
-  Genetic instance(3, 100, 0.01, sampleInitFunc, sampleFitFunc);
+int main(int argc, char** argv) {
+  if(argc<4) {
+    cout << "Usage: " << argv[0] << " dim size mutationProb" << endl;
+    exit(1);
+  }
+  int dim = atoi(argv[1]);
+  int size = atoi(argv[2]);
+  double mutationProb = atof(argv[3]);
+  Genetic instance(dim, size, mutationProb, rastriginInit, rastrigin);
   instance.run();
   instance.print();
 
