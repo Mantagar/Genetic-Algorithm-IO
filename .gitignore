@@ -1,4 +1,1 @@
-*
-!*.cpp
-!*.cu
-!.gitignore
+*.out

@@ -1,33 +1,30 @@
 #include <iostream>
-#include <list>
 #include <stdlib.h>
 #include <time.h>
 #include <iomanip>
-#include <math.h>
+#include "optim_functions.h"
 
-#define PI 3.1415926535
 using namespace std;
-/* Let's use Java's naming convention */
 class Genetic {
 
   int dim, size;
   double mutationProb;
   double** population;
   double* scores;
-  double (*initFunc)(int);
-  double (*fitFunc)(double*, int);
+  double (*initFunc)();
+  double (*fitFunc)(int, double*);
   int idx1;
   int idx2;
 
   void init() {
     for(int s=0; s<size; s++)
       for(int d=0; d<dim; d++)
-        population[s][d] = initFunc(d);
+        population[s][d] = initFunc();
   }
 
   void eval() {
     for(int s=0; s<size; s++)
-        scores[s] = fitFunc(population[s], dim);
+        scores[s] = fitFunc(dim, population[s]);
   }
 
   bool shouldContinue() {
@@ -42,7 +39,6 @@ class Genetic {
     idx2 = (idx1==0) ? 1 : 0;
     for(int i=0; i<size; i++)
       if(scores[idx2]>=scores[i] and i!=idx1) idx2 = i;
-    cout << idx1<<" "<<idx2 << endl;
   }
 
   void crossover() {
@@ -56,13 +52,12 @@ class Genetic {
     for(int s=0; s<size; s++)
       for(int d=0; d<dim; d++)
         if(s!=idx1 and s!=idx2)
-          if(rand()/(double)RAND_MAX<mutationProb) population[s][d] = initFunc(d); //Random mutation of genes with given probability
+          if(rand()/(double)RAND_MAX<mutationProb) population[s][d] = initFunc(); //Random mutation of genes with given probability
   }
 
 public:
 
-  Genetic(int dim, int size, double mutationProb, double (*initFunc)(int), double (*fitFunc)(double*, int)) {
-    srand(time(NULL));
+  Genetic(int dim, int size, double mutationProb, double (*initFunc)(), double (*fitFunc)(int, double*)) {
     this->dim = dim;
     this->size = size;
     this->mutationProb = mutationProb;
@@ -94,7 +89,7 @@ public:
   }
 
   void printFittestScore() {
-    cout << "Best score: " << scores[idx1] << endl;
+    cout << "Fitness: " << scores[idx1] << endl;
   }
     
   void print() {
@@ -108,27 +103,52 @@ public:
 
 };
 
-double rastriginInit(int dim_id) {
-  return (double)rand() / RAND_MAX * 10.24 - 5.12;
-}
-
-double rastrigin(double *point, int DIMENSION){
-  double result = DIMENSION*10;
-  for(int i=0; i<DIMENSION; i++){
-    result += point[i]*point[i]-10*cos(2*PI*point[i]);
-  }
-  return result;
+double rangeRandom(double min, double max) {
+  return (double)rand() / RAND_MAX * (max-min) + min;
 }
 
 int main(int argc, char** argv) {
-  if(argc<4) {
-    cout << "Usage: " << argv[0] << " dim size mutationProb" << endl;
+  if(argc<5) {
+    cout << "Usage:\n\t" << argv[0] << " dim size mutationProb problem" << endl;
+    cout << "Example:\n\t" << argv[0] << " 10000 20 0.001 3" << endl;
+    cout << "Problems:\n\t0 - rastrigin\n\t1 - dejong\n\t2 - schwefel\n\t3 - griewangk\n\t4 - ackley" << endl;
     exit(1);
   }
+
+  srand(time(NULL));
+
   int dim = atoi(argv[1]);
   int size = atoi(argv[2]);
   double mutationProb = atof(argv[3]);
-  Genetic instance(dim, size, mutationProb, rastriginInit, rastrigin);
+  int problem = atoi(argv[4]);
+
+  double (*initFunc)();
+  double (*fitFunc)(int, double*);
+  switch(problem) {
+    case 0:
+      fitFunc = rastrigin;
+      initFunc = [] () -> double { return rangeRandom(-5.12, 5.12); };
+      break;
+    case 1:
+      fitFunc = dejong;
+      initFunc = [] () -> double { return rangeRandom(-5.12, 5.12); };
+      break;
+    case 2:
+      fitFunc = schwefel;
+      initFunc = [] () -> double { return rangeRandom(-500, 500); };
+      break;
+    case 3:
+      fitFunc = griewangk;
+      initFunc = [] () -> double { return rangeRandom(-600, 600); };
+      break;
+    case 4:
+      fitFunc = ackley;
+      initFunc = [] () -> double { return rangeRandom(-1, 1); };
+      break;
+    
+  }
+
+  Genetic instance(dim, size, mutationProb, initFunc, fitFunc);
   instance.run();
   instance.print();
 
