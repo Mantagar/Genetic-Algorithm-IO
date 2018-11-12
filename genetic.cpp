@@ -8,7 +8,6 @@ using namespace std;
 class Genetic {
 
   int dim, size;
-  double mutationProb;
   double** population;
   double* scores;
   double (*initFunc)();
@@ -25,10 +24,6 @@ class Genetic {
   void eval() {
     for(int s=0; s<size; s++)
         scores[s] = fitFunc(dim, population[s]);
-  }
-
-  bool shouldContinue() {
-    return true; //TODO define stop condition
   }
 
   void select() {
@@ -48,57 +43,48 @@ class Genetic {
           population[s][d] = (rand()%2) ? population[idx1][d] : population[idx2][d]; //Random gene inheritance
   }
 
-  void mutate() {
+  void mutate(double mutationProb) {
     for(int s=0; s<size; s++)
       for(int d=0; d<dim; d++)
         if(s!=idx1 and s!=idx2)
-          if(rand()/(double)RAND_MAX<mutationProb) population[s][d] = initFunc(); //Random mutation of genes with given probability
+          if(rand()/(double)RAND_MAX<mutationProb) population[s][d] = initFunc(); //reinitialization of a mutated gene
   }
 
 public:
 
-  Genetic(int dim, int size, double mutationProb, double (*initFunc)(), double (*fitFunc)(int, double*)) {
+  Genetic(int dim, int size, double (*initFunc)(), double (*fitFunc)(int, double*)) {
     this->dim = dim;
     this->size = size;
-    this->mutationProb = mutationProb;
     population = new double*[size];
     for(int i=0; i<size; i++)
       population[i] = new double[dim];
     scores = new double[size];
     this->initFunc = initFunc;
     this->fitFunc = fitFunc;
+    init();
   }
 
   ~Genetic() {
     delete[] scores;
-    for(int i=0; i<dim; i++)
+    for(int i=0; i<size; i++)
       delete[] population[i];
     delete[] population;
   }
 
-  void run() {
-    init();
+  void run(int stepsBetweenChecks, double mutationProb) {    
+    double bestScore;
     eval();
+    select();
     do {
-      select();
-      crossover();
-      mutate();
-      eval();
-      printFittestScore();
-    } while(shouldContinue());
-  }
-
-  void printFittestScore() {
-    cout << "Fitness: " << scores[idx1] << endl;
-  }
-    
-  void print() {
-    for(int s=0; s<size; s++) {
-      cout << setprecision(5) << fixed << population[s][0];
-      for(int d=1; d<dim; d++)
-        cout << ",\t" << population[s][d];
-      cout << endl;
-    }
+      bestScore = scores[idx1];
+      cout << setprecision(10) << fixed << bestScore << endl; 
+      for(int i=0; i<stepsBetweenChecks; i++) {
+        crossover();
+        mutate(mutationProb);
+        eval();
+        select();
+      }
+    } while(bestScore>scores[idx1]);
   }
 
 };
@@ -109,7 +95,7 @@ double rangeRandom(double min, double max) {
 
 int main(int argc, char** argv) {
   if(argc<5) {
-    cout << "Usage:\n\t" << argv[0] << " dim size mutationProb problem" << endl;
+    cout << "Usage:\n\t" << argv[0] << " [dimension] [population size] [mutation probability] [problem]" << endl;
     cout << "Example:\n\t" << argv[0] << " 10000 20 0.001 3" << endl;
     cout << "Problems:\n\t0 - rastrigin\n\t1 - dejong\n\t2 - schwefel\n\t3 - griewangk\n\t4 - ackley" << endl;
     exit(1);
@@ -148,9 +134,8 @@ int main(int argc, char** argv) {
     
   }
 
-  Genetic instance(dim, size, mutationProb, initFunc, fitFunc);
-  instance.run();
-  instance.print();
+  Genetic instance(dim, size, initFunc, fitFunc);
+  instance.run(10000, mutationProb);
 
   return 0;
 }
