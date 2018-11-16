@@ -75,15 +75,18 @@ public:
     double bestScore;
     eval();
     select();
+    cout << setprecision(10) << fixed;
+    cout << scores[idx1] << endl;
     do {
       bestScore = scores[idx1];
-      cout << setprecision(10) << fixed << bestScore << endl; 
       for(int i=0; i<stepsBetweenChecks; i++) {
         crossover();
         mutate(mutationProb);
         eval();
         select();
+        cout << scores[idx1] << endl;//only use for tests (it is far to slow while spammed to stdout)
       }
+      //cout << scores[idx1] << endl;
     } while(bestScore>scores[idx1]);
   }
 
@@ -95,8 +98,8 @@ double rangeRandom(double min, double max) {
 
 int main(int argc, char** argv) {
   if(argc<5) {
-    cout << "Usage:\n\t" << argv[0] << " [dimension] [population size] [mutation probability] [problem]" << endl;
-    cout << "Example:\n\t" << argv[0] << " 10000 20 0.001 3" << endl;
+    cout << "Usage:\n\t" << argv[0] << " [dimension] [population size] [mutation probability] [stop] [problem]" << endl;
+    cout << "Example:\n\t" << argv[0] << " 100 20 0.001 10000 3" << endl;
     cout << "Problems:\n\t0 - rastrigin\n\t1 - dejong\n\t2 - schwefel\n\t3 - griewangk\n\t4 - ackley" << endl;
     exit(1);
   }
@@ -106,7 +109,8 @@ int main(int argc, char** argv) {
   int dim = atoi(argv[1]);
   int size = atoi(argv[2]);
   double mutationProb = atof(argv[3]);
-  int problem = atoi(argv[4]);
+  int stop = atoi(argv[4]);
+  int problem = atoi(argv[5]);
 
   double (*initFunc)();
   double (*fitFunc)(int, double*);
@@ -135,7 +139,7 @@ int main(int argc, char** argv) {
   }
 
   Genetic instance(dim, size, initFunc, fitFunc);
-  instance.run(10000, mutationProb);
+  instance.run(stop, mutationProb);
 
   return 0;
 }
