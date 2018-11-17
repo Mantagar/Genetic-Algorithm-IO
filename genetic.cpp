@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <time.h>
 #include <iomanip>
-#include "mpi.h"
+#include <mpi.h>
 #include "optim_functions.h"
 
 int mpi_size;
 int mpi_rank;
+MPI_Comm comm = MPI_COMM_WORLD;
 
 using namespace std;
 class Island {
@@ -81,7 +82,10 @@ public:
     mutate(mutationProb);
     eval();
     select();
-    cout << "Rank " << mpi_rank << ": " << scores[idx1] << endl;
+  }
+
+  double getBestScore() {
+    return scores[idx1];
   }
 
   void getRandomRepresentative(double* rep) {
@@ -97,7 +101,6 @@ public:
     for(int i=0; i<dim; i++)
       population[id][i] = rep[i];
   }
-
 };
 
 double rangeRandom(double min, double max) {
@@ -107,16 +110,16 @@ double rangeRandom(double min, double max) {
 int main(int argc, char *argv[]) {
 
   MPI_Init(&argc, &argv);
-  MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+  MPI_Comm_size(comm, &mpi_size);
+  MPI_Comm_rank(comm, &mpi_rank);
 
   cout << setprecision(10) << fixed;
   srand(time(NULL)+mpi_rank);
 
   int dim = 100;
   int size = 25;
-  double mutationProb = 0.001;
-  int problem = 0;
+  double mutationProb = 0.01;
+  int problem = 2;
 
   double (*initFunc)();
   double (*fitFunc)(int, double*);
@@ -140,14 +143,31 @@ int main(int argc, char *argv[]) {
     case 4:
       fitFunc = ackley;
       initFunc = [] () -> double { return rangeRandom(-1, 1); };
-      break; 
+      break;
   }
 
+  double *gathered = new double[mpi_size*dim];
+  double *rep = new double[dim];
+  double *scores = new double[mpi_size];
   Island island(dim, size, initFunc, fitFunc);
-  island.next(mutationProb);
-
-  int *sth = new int[mpi_size];
-  MPI_Gather(&mpi_rank, 1, MPI_INT, sth, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  int counter = 0;
+  while(true) {
+    island.next(mutationProb);
+    counter++;
+    if(counter%100==0) {
+      counter = 0;
+      int reciver = rand()%mpi_size;
+      island.getRandomRepresentative(rep);
+      MPI_Allgather(rep, dim, MPI_DOUBLE, gathered, dim, MPI_DOUBLE, comm);
+      island.addToPopulation(gathered+dim*reciver);
+      double bestScore = island.getBestScore();
+      MPI_Gather(&bestScore, 1, MPI_DOUBLE, scores, 1, MPI_DOUBLE, 0, comm);
+      if(mpi_rank==0)      
+        for(int i=0; i<mpi_size; i++) {
+          cout << i << ":\t" << scores[i] << endl;
+        }
+    }
+  }
 
   MPI_Finalize();
 
