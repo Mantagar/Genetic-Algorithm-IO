@@ -1,13 +1,13 @@
-#include <Island.h>
 #include <cstdlib>
+#include "Island.h"
 
 Island::Island(int dim, int size, std::unique_ptr<Problem> problemInit)
-  : dim{dim},
-    size{size},
-    population{new double*[size]},
-    scores{new double[size]},
-    problem{std::move(problemInit)}
 {
+    this->dim = dim;
+    this->size = size;
+    this->population = new double*[size];
+    this->scores = new double[size];
+    this->problem = std::move(problemInit);
     for(int i=0; i<size; i++)
         population[i] = new double[dim];
 

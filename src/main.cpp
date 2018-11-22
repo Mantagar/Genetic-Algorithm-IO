@@ -23,17 +23,17 @@ int main(int argc, char *argv[]) {
     std::cout << std::setprecision(10) << std::fixed;
     srand(time(NULL)+mpi_rank);
 
-    auto dim{100u};
-    auto size{25u};
-    auto mutationProb{0.01};
-    auto counter{0};
+    int dim = 100;
+    int size = 25;
+    double mutationProb = 0.01;
+    int counter = 0;
 
-    auto *gathered = new double[mpi_size*dim];
-    auto *rep = new double[dim];
-    auto *scores = new double[mpi_size];
+    double *gathered = new double[mpi_size*dim];
+    double *rep = new double[dim];
+    double *scores = new double[mpi_size];
 
-    ProblemFactory problemFactory{};
-    auto problem{problemFactory.create(ProblemName::Schwefel)};
+    ProblemFactory problemFactory;
+    std::unique_ptr<Problem> problem = problemFactory.create(ProblemName::Schwefel);
     Island island(dim, size, std::move(problem));
 
     while(true) {
