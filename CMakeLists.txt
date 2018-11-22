@@ -14,12 +14,17 @@ set(SOURCES
         src/main.cpp
         src/Island.cpp
         src/utils.cpp
+        src/Problem.cpp
+        src/ProblemFactory.cpp
         )
 
 set(HEADERS
         src/optim_functions.h
         src/utils.h
         src/Island.h
+        src/ProblemName.h
+        src/Problem.h
+        src/ProblemFactory.h
         )
 
 add_executable(Genetic_Algorithm_IO ${SOURCES} ${HEADERS})

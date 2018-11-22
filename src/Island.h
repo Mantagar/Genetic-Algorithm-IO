@@ -1,9 +1,13 @@
 #pragma once
 
+#include <functional>
+#include <memory>
+#include "Problem.h"
+
 class Island
 {
 public:
-    Island(int dim, int size, double (*initFunc)(), double (*fitFunc)(int, double*));
+    Island(int dim, int size, std::unique_ptr<Problem>);
     ~Island();
 
     void next(double mutationProb);
@@ -21,8 +25,7 @@ private:
     int dim, size;
     double** population;
     double* scores;
-    double (*initFunc)();
-    double (*fitFunc)(int, double*);
+    std::unique_ptr<Problem> problem;
     int idx1;
     int idx2;
 };

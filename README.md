@@ -8,7 +8,7 @@
 ### Compile:
 ```sh
 $ mkdir build
-$ cd build;
+$ cd build
 $ cmake ..
 ```
 

@@ -1,15 +1,16 @@
 #include <Island.h>
 #include <cstdlib>
 
-Island::Island(int dim, int size, double (*initFunc)(), double (*fitFunc)(int, double*)) {
-    this->dim = dim;
-    this->size = size;
-    population = new double*[size];
+Island::Island(int dim, int size, std::unique_ptr<Problem> problemInit)
+  : dim{dim},
+    size{size},
+    population{new double*[size]},
+    scores{new double[size]},
+    problem{std::move(problemInit)}
+{
     for(int i=0; i<size; i++)
         population[i] = new double[dim];
-    scores = new double[size];
-    this->initFunc = initFunc;
-    this->fitFunc = fitFunc;
+
     init();
     eval();
     select();
@@ -50,12 +51,12 @@ void Island::addToPopulation(double *rep) {
 void Island::init() {
     for(int s=0; s<size; s++)
         for(int d=0; d<dim; d++)
-            population[s][d] = initFunc();
+            population[s][d] = problem->initFunction();
 }
 
 void Island::eval() {
     for(int s=0; s<size; s++)
-        scores[s] = fitFunc(dim, population[s]);
+        scores[s] = problem->fitFunction(dim, population[s]);
 }
 
 void Island::select() {
@@ -78,5 +79,5 @@ void Island::mutate(double mutationProb) {
     for(int s=0; s<size; s++)
         for(int d=0; d<dim; d++)
             if(s!=idx1 and s!=idx2)
-                if(rand()/(double)RAND_MAX<mutationProb) population[s][d] = initFunc();
+                if(rand()/(double)RAND_MAX<mutationProb) population[s][d] = problem->initFunction();
 }
