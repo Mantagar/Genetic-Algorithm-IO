@@ -116,10 +116,10 @@ int main(int argc, char *argv[]) {
   cout << setprecision(10) << fixed;
   srand(time(NULL)+mpi_rank);
 
-  int dim = 100;
-  int size = 25;
-  double mutationProb = 0.01;
-  int problem = 2;
+  int dim = atoi(argv[1]);
+  int size = atoi(argv[2]);
+  double mutationProb = atof(argv[3]);
+  int problem = atoi(argv[4]);
 
   double (*initFunc)();
   double (*fitFunc)(int, double*);
