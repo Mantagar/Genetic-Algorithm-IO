@@ -3,6 +3,7 @@
 #include <time.h>
 #include <iomanip>
 #include <mpi.h>
+#include <vector>
 #include "optim_functions.h"
 
 int mpi_size;
@@ -13,22 +14,16 @@ using namespace std;
 class Island {
 
   int dim, size;
-  double** population;
-  double* scores;
+  vector<vector<double>> population;
+  vector<double> scores;
   double (*initFunc)();
   double (*fitFunc)(int, double*);
   int idx1;
   int idx2;
 
-  void init() {
-    for(int s=0; s<size; s++)
-      for(int d=0; d<dim; d++)
-        population[s][d] = initFunc();
-  }
-
   void eval() {
     for(int s=0; s<size; s++)
-        scores[s] = fitFunc(dim, population[s]);
+        scores[s] = fitFunc(dim, &population[s][0]);
   }
 
   void select() {
@@ -59,10 +54,10 @@ public:
   Island(int dim, int size, double (*initFunc)(), double (*fitFunc)(int, double*)) {
     this->dim = dim;
     this->size = size;
-    population = new double*[size];
+    population.resize(size);
     for(int i=0; i<size; i++)
-      population[i] = new double[dim];
-    scores = new double[size];
+      population[i].resize(dim);
+    scores.resize(size);
     this->initFunc = initFunc;
     this->fitFunc = fitFunc;
     init();
@@ -70,11 +65,10 @@ public:
     select();
   }
 
-  ~Island() {
-    delete[] scores;
-    for(int i=0; i<size; i++)
-      delete[] population[i];
-    delete[] population;
+  void init() {
+    for(int s=0; s<size; s++)
+      for(int d=0; d<dim; d++)
+        population[s][d] = initFunc();
   }
 
   void next(double mutationProb) {
@@ -88,18 +82,16 @@ public:
     return scores[idx1];
   }
 
-  void getRandomRepresentative(double* rep) {
+  vector<double> getRandomRepresentative() {
     int id = rand()%size;
-    for(int i=0; i<dim; i++)
-      rep[i] = population[id][i];
+    return population[id];
   }
 
-  void addToPopulation(double *rep) {
+  void addToPopulation(vector<double> rep) {
     int id = 0;
     for(int i=1; i<size; i++)
       if(scores[id]<scores[i]) id = i;
-    for(int i=0; i<dim; i++)
-      population[id][i] = rep[i];
+    population[id] = rep;
   }
 };
 
@@ -116,10 +108,10 @@ int main(int argc, char *argv[]) {
   cout << setprecision(10) << fixed;
   srand(time(NULL)+mpi_rank);
 
-  int dim = atoi(argv[1]);
-  int size = atoi(argv[2]);
-  double mutationProb = atof(argv[3]);
-  int problem = atoi(argv[4]);
+  int dim = 100;//atoi(argv[1]);
+  int populationSize = 25;//atoi(argv[2]);
+  double mutationProb = 0.001;//atof(argv[3]);
+  int problem = 2;//atoi(argv[4]);
 
   double (*initFunc)();
   double (*fitFunc)(int, double*);
@@ -146,26 +138,98 @@ int main(int argc, char *argv[]) {
       break;
   }
 
-  double *gathered = new double[mpi_size*dim];
-  double *rep = new double[dim];
-  double *scores = new double[mpi_size];
-  Island island(dim, size, initFunc, fitFunc);
-  int counter = 0;
+  vector<int> links;
+  string topology(argv[1]);
+
+  if(topology=="ring") {
+    int node = mpi_rank+1;
+    if(node==mpi_size) node = 0;
+    links.push_back(node);
+    node = mpi_rank-1;
+    if(node==-1) node = mpi_size-1;
+    links.push_back(node);
+  }
+  else if(topology=="torus") {
+    int width = atoi(argv[2]);
+    if(mpi_size%width){
+      if(mpi_rank==0) cerr << "Incompatible mpi_size" << endl;
+      MPI_Finalize();
+      return 0;
+    }
+    int height = mpi_size/width;
+    int x = mpi_rank%width;
+    int y = mpi_rank/width;
+    int nodeX = x+1;
+    if(nodeX==width) nodeX = 0;
+    links.push_back(y*width+nodeX);
+    nodeX = x-1;
+    if(nodeX==-1) nodeX = width-1;
+    links.push_back(y*width+nodeX);
+    int nodeY = y+1;
+    if(nodeY==height) nodeY = 0;
+    links.push_back(nodeY*width+x);
+    nodeY = y-1;
+    if(nodeY==-1) nodeY = height-1;
+    links.push_back(nodeY*width+x);
+  }
+  else {
+    if(mpi_rank==0) cerr << "Unknown topology setup" << endl;
+    MPI_Finalize();
+    return 0;
+  }
+
+  MPI_Request send_req[links.size()];
+  MPI_Request recv_req[links.size()];
+
+  vector<vector<double>> immigrants;
+  immigrants.resize(links.size());
+  for(int i=0; i<links.size(); i++)
+    immigrants[i].resize(dim);
+
+  vector<double> log;
+  log.resize(mpi_size);
+
+  Island island(dim, populationSize, initFunc, fitFunc);
+
+  int logCounter = 0;
+  int migrateCounter = 0;
+  int statsCounter = 0;
   while(true) {
+
     island.next(mutationProb);
-    counter++;
-    if(counter%100==0) {
-      counter = 0;
-      int reciver = rand()%mpi_size;
-      island.getRandomRepresentative(rep);
-      MPI_Allgather(rep, dim, MPI_DOUBLE, gathered, dim, MPI_DOUBLE, comm);
-      island.addToPopulation(gathered+dim*reciver);
-      double bestScore = island.getBestScore();
-      MPI_Gather(&bestScore, 1, MPI_DOUBLE, scores, 1, MPI_DOUBLE, 0, comm);
+
+    logCounter++;
+    if(logCounter%100==0) {
+      logCounter=0;
+      double score = island.getBestScore();
+      MPI_Gather(&score, 1, MPI_DOUBLE, &log[0], 1, MPI_DOUBLE, 0, comm);
       if(mpi_rank==0)      
-        for(int i=0; i<mpi_size; i++) {
-          cout << i << ":\t" << scores[i] << endl;
-        }
+        for(int i=0; i<mpi_size; i++)
+          cout << i << ":\t" << log[i] << endl;
+    }
+
+    migrateCounter++;
+    if(migrateCounter%200==0) {
+      migrateCounter = 0;
+
+      for(int i=0; i<links.size(); i++) {
+        vector<double> rep = island.getRandomRepresentative();
+        MPI_Isend(&rep[0], dim, MPI_DOUBLE, links[i], 0, comm, &send_req[i]);
+      }
+
+      for(int i=0; i<links.size(); i++)
+        MPI_Irecv(&immigrants[i][0], dim, MPI_DOUBLE, links[i], 0, comm, &recv_req[i]);
+
+      for(int i=0; i<links.size(); i++) {
+        MPI_Wait(&recv_req[i], MPI_STATUS_IGNORE);
+        island.addToPopulation(immigrants[i]);
+      }
+    }
+
+    statsCounter++;
+    if(statsCounter%500==0) {
+      statsCounter = 0;
+      //std and mean passed by allgather, reseting island - init() method
     }
   }
 
