@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <mpi.h>
 #include <vector>
+#include <cmath>
 #include "optim_functions.h"
 
 int mpi_size;
@@ -20,6 +21,8 @@ class Island {
   double (*fitFunc)(int, double*);
   int idx1;
   int idx2;
+  vector<double> std;
+  vector<double> mean;
 
   void eval() {
     for(int s=0; s<size; s++)
@@ -58,6 +61,8 @@ public:
     for(int i=0; i<size; i++)
       population[i].resize(dim);
     scores.resize(size);
+    std.resize(dim);
+    mean.resize(dim);
     this->initFunc = initFunc;
     this->fitFunc = fitFunc;
     init();
@@ -92,6 +97,30 @@ public:
     for(int i=1; i<size; i++)
       if(scores[id]<scores[i]) id = i;
     population[id] = rep;
+  }
+
+  void updateMetrics() {
+    for(int d=0; d<dim; d++) {
+      mean[d] = 0;
+      for(int s=0; s<size; s++)
+        mean[d] += population[s][d];
+      mean[d] /= size;
+    }
+
+    for(int d=0; d<dim; d++) {
+      std[d] = 0;
+      for(int s=0; s<size; s++)
+        std[d] += population[s][d] - mean[d];
+      std[d] = sqrt(std[d]*std[d]/dim);
+    }
+  }
+
+  vector<double> getMean() {
+    return mean;
+  }
+
+  vector<double> getStd() {
+    return std;
   }
 };
 
@@ -227,9 +256,35 @@ int main(int argc, char *argv[]) {
     }
 
     statsCounter++;
-    if(statsCounter%500==0) {
+    if(statsCounter%5000==0) {
       statsCounter = 0;
-      //std and mean passed by allgather, reseting island - init() method
+
+      island.updateMetrics();
+      vector<double> std = island.getStd();
+      vector<double> mean = island.getMean();
+
+      vector<double> meanMetrics;
+      meanMetrics.resize(dim*mpi_size);
+      MPI_Allgather(&mean[0], dim, MPI_DOUBLE, &meanMetrics[0], dim, MPI_DOUBLE, comm);
+
+      int similar;
+      bool reset = false;
+      for(int s=0; s<mpi_rank; s++) {
+        similar = 0;
+        for(int d=0; d<dim; d++)
+          if(mean[d]-std[d]*3<meanMetrics[s*dim+d] && meanMetrics[s*dim+d]<mean[d]+std[d]*3)
+            similar++;
+        if(similar!=0)cout << similar << endl;
+        if(similar>dim*0.5) {
+          reset = true;
+          break;
+        }
+      }
+            
+      if(reset) {
+        island.init();
+        cout << string(mpi_rank+": RESET") << endl;     
+      }
     }
   }
 
