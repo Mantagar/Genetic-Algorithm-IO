@@ -6,6 +6,8 @@
 #include <vector>
 #include <cmath>
 #include "optim_functions.h"
+#include <fstream>
+#include <chrono>
 
 int mpi_size;
 int mpi_rank;
@@ -137,7 +139,7 @@ int main(int argc, char *argv[]) {
   cout << setprecision(10) << fixed;
   srand(time(NULL)+mpi_rank);
 
-  int dim = 100;//atoi(argv[1]);
+  int dim = 1000;//atoi(argv[1]);
   int populationSize = 25;//atoi(argv[2]);
   double mutationProb = 0.001;//atof(argv[3]);
   int problem = 2;//atoi(argv[4]);
@@ -201,6 +203,17 @@ int main(int argc, char *argv[]) {
     if(nodeY==-1) nodeY = height-1;
     links.push_back(nodeY*width+x);
   }
+  else if(topology=="full") {
+    for(int i=0; i<mpi_size; i++)
+      if(i!=mpi_rank)
+        links.push_back(i);
+  }
+  else if(topology=="topology") {
+    ifstream linkfile(argv[2]);
+    int a, b;
+    while(linkfile >> a >> b)
+      if(a==mpi_rank) links.push_back(b);
+  }
   else {
     if(mpi_rank==0) cerr << "Unknown topology setup" << endl;
     MPI_Finalize();
@@ -220,27 +233,24 @@ int main(int argc, char *argv[]) {
 
   Island island(dim, populationSize, initFunc, fitFunc);
 
-  int logCounter = 0;
-  int migrateCounter = 0;
-  int statsCounter = 0;
+  long counter = 0;
+  auto start = chrono::high_resolution_clock::now();
   while(true) {
+    counter++;
 
     island.next(mutationProb);
 
-    logCounter++;
-    if(logCounter%100==0) {
-      logCounter=0;
+/*
+    if(counter%100==0) {
       double score = island.getBestScore();
       MPI_Gather(&score, 1, MPI_DOUBLE, &log[0], 1, MPI_DOUBLE, 0, comm);
       if(mpi_rank==0)      
         for(int i=0; i<mpi_size; i++)
           cout << i << ":\t" << log[i] << endl;
     }
+*/
 
-    migrateCounter++;
-    if(migrateCounter%200==0) {
-      migrateCounter = 0;
-
+    if(counter%200==0) {
       for(int i=0; i<links.size(); i++) {
         vector<double> rep = island.getRandomRepresentative();
         MPI_Isend(&rep[0], dim, MPI_DOUBLE, links[i], 0, comm, &send_req[i]);
@@ -254,11 +264,8 @@ int main(int argc, char *argv[]) {
         island.addToPopulation(immigrants[i]);
       }
     }
-
-    statsCounter++;
-    if(statsCounter%5000==0) {
-      statsCounter = 0;
-
+/*
+    if(counter%5000==0) {
       island.updateMetrics();
       vector<double> std = island.getStd();
       vector<double> mean = island.getMean();
@@ -286,9 +293,9 @@ int main(int argc, char *argv[]) {
         cout << string(mpi_rank+": RESET") << endl;     
       }
     }
+*/
+
+    if(mpi_rank==0)
+      cout << (chrono::high_resolution_clock::now()-start).count() << endl;
   }
-
-  MPI_Finalize();
-
-  return 0;
 }
