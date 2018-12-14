@@ -235,12 +235,11 @@ int main(int argc, char *argv[]) {
 
   long counter = 0;
   auto start = chrono::high_resolution_clock::now();
-  while(true) {
+  for(int r=0; r<20000; r++) {
     counter++;
 
     island.next(mutationProb);
 
-/*
     if(counter%100==0) {
       double score = island.getBestScore();
       MPI_Gather(&score, 1, MPI_DOUBLE, &log[0], 1, MPI_DOUBLE, 0, comm);
@@ -248,7 +247,6 @@ int main(int argc, char *argv[]) {
         for(int i=0; i<mpi_size; i++)
           cout << i << ":\t" << log[i] << endl;
     }
-*/
 
     if(counter%200==0) {
       for(int i=0; i<links.size(); i++) {
@@ -264,7 +262,7 @@ int main(int argc, char *argv[]) {
         island.addToPopulation(immigrants[i]);
       }
     }
-/*
+
     if(counter%5000==0) {
       island.updateMetrics();
       vector<double> std = island.getStd();
@@ -293,9 +291,13 @@ int main(int argc, char *argv[]) {
         cout << string(mpi_rank+": RESET") << endl;     
       }
     }
-*/
 
-    if(mpi_rank==0)
-      cout << (chrono::high_resolution_clock::now()-start).count() << endl;
   }
+  MPI_Barrier(comm);
+  auto end = chrono::high_resolution_clock::now();
+  chrono::duration<double> diff = end-start;
+  if(mpi_rank==0)
+    cout << "TIME:\t" << diff.count() << endl;
+  MPI_Finalize();
+  return 0;
 }
