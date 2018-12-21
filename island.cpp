@@ -1,5 +1,7 @@
 #include <vector>
-using namespace std;
+#include <cmath>
+#include <stdlib.h>
+#include "island.h"
 
 void Island::eval() {
   for(int s=0; s<size; s++)
@@ -62,12 +64,12 @@ double Island::getBestScore() {
   return scores[idx1];
 }
 
-vector<double> Island::getRandomRepresentative() {
+std::vector<double> Island::getRandomRepresentative() {
   int id = rand()%size;
   return population[id];
 }
 
-void Island::addToPopulation(vector<double> rep) {
+void Island::addToPopulation(std::vector<double> rep) {
   int id = 0;
   for(int i=1; i<size; i++)
     if(scores[id]<scores[i]) id = i;
@@ -90,10 +92,10 @@ void Island::updateMetrics() {
   }
 }
 
-vector<double> Island::getMean() {
+std::vector<double> Island::getMean() {
   return mean;
 }
 
-vector<double> Island::getStd() {
+std::vector<double> Island::getStd() {
   return std;
 }

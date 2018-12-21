@@ -1,4 +1,5 @@
 #include <cmath>
+#include <stdlib.h>
 #define _USE_MATH_DEFINES
 double ackley(int dim, double *point){
   double sum_result1 = 0;

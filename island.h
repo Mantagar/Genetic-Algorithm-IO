@@ -1,14 +1,14 @@
 class Island {
 
   int dim, size;
-  vector<vector<double>> population;
-  vector<double> scores;
+  std::vector<std::vector<double>> population;
+  std::vector<double> scores;
   double (*initFunc)();
   double (*fitFunc)(int, double*);
   int idx1;
   int idx2;
-  vector<double> std;
-  vector<double> mean;
+  std::vector<double> std;
+  std::vector<double> mean;
 
   void eval();
   void select();
@@ -21,9 +21,9 @@ public:
   void init();
   void next(double mutationProb);
   double getBestScore();
-  vector<double> getRandomRepresentative();
-  void addToPopulation(vector<double> rep);
+  std::vector<double> getRandomRepresentative();
+  void addToPopulation(std::vector<double> rep);
   void updateMetrics();
-  vector<double> getMean();
-  vector<double> getStd();
+  std::vector<double> getMean();
+  std::vector<double> getStd();
 };
