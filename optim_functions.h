@@ -5,4 +5,6 @@ double griewangk(int dim, double *point); // [-600, 600]
 double schwefel(int dim, double *point);  // [-500, 500]
 double dejong(int dim, double *point);    // [-5.12, 5.12]
 double rastrigin(int dim, double *point); // [-5.12, 5.12]
+
+double rangeRandom(double min, double max);
 #endif

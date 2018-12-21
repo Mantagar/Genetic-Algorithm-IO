@@ -6,129 +6,13 @@
 #include <vector>
 #include <cmath>
 #include "optim_functions.h"
+#include "island.h"
 #include <fstream>
 #include <chrono>
-
+using namespace std;
 int mpi_size;
 int mpi_rank;
 MPI_Comm comm = MPI_COMM_WORLD;
-
-using namespace std;
-class Island {
-
-  int dim, size;
-  vector<vector<double>> population;
-  vector<double> scores;
-  double (*initFunc)();
-  double (*fitFunc)(int, double*);
-  int idx1;
-  int idx2;
-  vector<double> std;
-  vector<double> mean;
-
-  void eval() {
-    for(int s=0; s<size; s++)
-        scores[s] = fitFunc(dim, &population[s][0]);
-  }
-
-  void select() {
-    idx1 = 0;
-    for(int i=0; i<size; i++)
-      if(scores[idx1]>=scores[i]) idx1 = i;
-    idx2 = (idx1==0) ? 1 : 0;
-    for(int i=0; i<size; i++)
-      if(scores[idx2]>=scores[i] and i!=idx1) idx2 = i;
-  }
-
-  void crossover() {
-    for(int s=0; s<size; s++)
-      for(int d=0; d<dim; d++)
-        if(s!=idx1 and s!=idx2)
-          population[s][d] = (rand()%2) ? population[idx1][d] : population[idx2][d];
-  }
-
-  void mutate(double mutationProb) {
-    for(int s=0; s<size; s++)
-      for(int d=0; d<dim; d++)
-        if(s!=idx1 and s!=idx2)
-          if(rand()/(double)RAND_MAX<mutationProb) population[s][d] = initFunc();
-  }
-
-public:
-
-  Island(int dim, int size, double (*initFunc)(), double (*fitFunc)(int, double*)) {
-    this->dim = dim;
-    this->size = size;
-    population.resize(size);
-    for(int i=0; i<size; i++)
-      population[i].resize(dim);
-    scores.resize(size);
-    std.resize(dim);
-    mean.resize(dim);
-    this->initFunc = initFunc;
-    this->fitFunc = fitFunc;
-    init();
-    eval();
-    select();
-  }
-
-  void init() {
-    for(int s=0; s<size; s++)
-      for(int d=0; d<dim; d++)
-        population[s][d] = initFunc();
-  }
-
-  void next(double mutationProb) {
-    crossover();
-    mutate(mutationProb);
-    eval();
-    select();
-  }
-
-  double getBestScore() {
-    return scores[idx1];
-  }
-
-  vector<double> getRandomRepresentative() {
-    int id = rand()%size;
-    return population[id];
-  }
-
-  void addToPopulation(vector<double> rep) {
-    int id = 0;
-    for(int i=1; i<size; i++)
-      if(scores[id]<scores[i]) id = i;
-    population[id] = rep;
-  }
-
-  void updateMetrics() {
-    for(int d=0; d<dim; d++) {
-      mean[d] = 0;
-      for(int s=0; s<size; s++)
-        mean[d] += population[s][d];
-      mean[d] /= size;
-    }
-
-    for(int d=0; d<dim; d++) {
-      std[d] = 0;
-      for(int s=0; s<size; s++)
-        std[d] += population[s][d] - mean[d];
-      std[d] = sqrt(std[d]*std[d]/dim);
-    }
-  }
-
-  vector<double> getMean() {
-    return mean;
-  }
-
-  vector<double> getStd() {
-    return std;
-  }
-};
-
-double rangeRandom(double min, double max) {
-  return (double)rand() / RAND_MAX * (max-min) + min;
-}
 
 int main(int argc, char *argv[]) {
 
@@ -139,10 +23,10 @@ int main(int argc, char *argv[]) {
   cout << setprecision(10) << fixed;
   srand(time(NULL)+mpi_rank);
 
-  int dim = 1000;//atoi(argv[1]);
-  int populationSize = 25;//atoi(argv[2]);
-  double mutationProb = 0.001;//atof(argv[3]);
-  int problem = 2;//atoi(argv[4]);
+  int dim = 1000;
+  int populationSize = 25;
+  double mutationProb = 0.001;
+  int problem = 2;
 
   double (*initFunc)();
   double (*fitFunc)(int, double*);

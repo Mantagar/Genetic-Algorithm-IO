@@ -43,3 +43,8 @@ double rastrigin(int dim, double *point){
   }
   return result;
 }
+
+
+double rangeRandom(double min, double max) {
+  return (double)rand() / RAND_MAX * (max-min) + min;
+}
