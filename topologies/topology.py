@@ -4,7 +4,7 @@ n = int(sys.argv[1])
 ranks = range(n)
 links = []
 for r in ranks:
-  selec = random.sample(ranks, int(n*random.random()/2))
+  selec = random.sample(ranks, int(n*random.random()/10))
   for i in selec:
     links.append((r,i))
   if r == 0:

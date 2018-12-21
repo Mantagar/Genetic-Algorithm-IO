@@ -235,7 +235,7 @@ int main(int argc, char *argv[]) {
 
   long counter = 0;
   auto start = chrono::high_resolution_clock::now();
-  for(int r=0; r<20000; r++) {
+  for(int r=0; r<200000; r++) {
     counter++;
 
     island.next(mutationProb);
