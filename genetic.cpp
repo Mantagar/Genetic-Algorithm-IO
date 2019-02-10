@@ -25,8 +25,9 @@ int main(int argc, char *argv[]) {
 
   int dim = 1000;
   int populationSize = 25;
-  double mutationProb = 0.001;
   int problem = 2;
+
+  double mutationProb = stod(argv[1]);
 
   double (*initFunc)();
   double (*fitFunc)(int, double*);
@@ -54,7 +55,7 @@ int main(int argc, char *argv[]) {
   }
 
   vector<int> links;
-  string topology(argv[1]);
+  string topology(argv[2]);
 
   if(topology=="ring") {
     int node = mpi_rank+1;
@@ -65,7 +66,7 @@ int main(int argc, char *argv[]) {
     links.push_back(node);
   }
   else if(topology=="torus") {
-    int width = atoi(argv[2]);
+    int width = atoi(argv[3]);
     if(mpi_size%width){
       if(mpi_rank==0) cerr << "Incompatible mpi_size" << endl;
       MPI_Finalize();
@@ -93,7 +94,7 @@ int main(int argc, char *argv[]) {
         links.push_back(i);
   }
   else if(topology=="topology") {
-    ifstream linkfile(argv[2]);
+    ifstream linkfile(argv[3]);
     int a, b;
     while(linkfile >> a >> b)
       if(a==mpi_rank) links.push_back(b);

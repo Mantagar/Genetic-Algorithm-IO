@@ -4,7 +4,7 @@
 #SBATCH --time=01:00:00 
 #SBATCH -A io2018
 #SBATCH -p plgrid
-#SBATCH --output="logs/MODE_CPUS.out"
+#SBATCH --output="logs/MODE_CPUS_MUTATION_PROB.out"
 
 srun /bin/hostname
  
@@ -14,15 +14,15 @@ cd $SLURM_SUBMIT_DIR
 
 case MODE in
   full)
-    mpiexec ./genetic.out full
+    mpiexec ./genetic.out MUTATION_PROB full
     ;;
   topology)
-    mpiexec ./genetic.out topology topologies/CPUS
+    mpiexec ./genetic.out MUTATION_PROB topology topologies/CPUS
     ;;
   ring)
-    mpiexec ./genetic.out ring
+    mpiexec ./genetic.out MUTATION_PROB ring
     ;;
   torus)
-    mpiexec ./genetic.out torus 12
+    mpiexec ./genetic.out MUTATION_PROB torus 12
     ;;
 esac
